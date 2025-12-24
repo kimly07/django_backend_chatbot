@@ -83,9 +83,9 @@ class ResentOtpSerializer(serializers.Serializer):
             
             if auth.otp_created_at:
                 time_since_last = timezone.now() - auth.otp_created_at
-                if time_since_last < timedelta(seconds=60):
-                    raise serializers.ValidationError("Please wait at least 60 seconds before requesting a new OTP.")
-        
+                if time_since_last < timedelta(seconds=30):
+                    raise serializers.ValidationError("Please wait at least 30 seconds before requesting a new OTP.")
+
         except Auth.DoesNotExist:
             raise serializers.ValidationError('Invalid email or password.')
         

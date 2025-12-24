@@ -33,7 +33,8 @@ urlpatterns = [
     path('delete-user/', delete_user, name='delete_user'),
 
     # -------- PASSWORD RESET (OTP) --------
-    path('password/forgot/', views.forgot_password, name='forgot_password'),
+    # path('password/forgot/', views.forgot_password, name='forgot_password'),
+    path('resend-password/forgot/', views.forgot_password, name='forgot_password_resend/otp'),
     path('password/verify-otp/', views.verify_reset_otp, name='verify_reset_otp'),
     path('password/reset/', views.reset_password, name='reset_password'),
 ]

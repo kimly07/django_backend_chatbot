@@ -8,7 +8,7 @@ class Auth(models.Model):
     otp_code = models.CharField(max_length=6, blank=True)  
     otp_created_at = models.DateTimeField(null=True, blank=True)  
     temp_username = models.CharField(max_length=100, blank=True, null=True)
-
+    
     reset_token = models.CharField(max_length=100, blank=True, null=True)
     reset_token_expires = models.DateTimeField(null=True, blank=True)
     

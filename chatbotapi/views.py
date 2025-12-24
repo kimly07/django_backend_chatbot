@@ -318,7 +318,7 @@ def reset_password_confirm(request, token):
 
     return Response({
         "success": True,
-        "message": "Password reset successful"
+        "message": "Password reset successfully"
     })
 
 @api_view(['GET', 'POST'])
