@@ -2,10 +2,11 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from django.core.exceptions import ObjectDoesNotExist
-from .models import Auth, User
+from .models import Auth, Chats, User
 
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
+from django.contrib.auth.hashers import check_password   # <-- ONLY NEW LINE
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
@@ -31,7 +32,7 @@ def delete_user(request):
             # Get required fields
             email = request.data.get('email')
             password = request.data.get('password')
-            confirmation = request.data.get('confirmation', '').lower()
+            confirmation = request.data.get('confirmation', '').lower().strip()
             
             if not email or not password:
                 return Response({
@@ -46,23 +47,31 @@ def delete_user(request):
                     "warning": "This will permanently delete your account and all data!"
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Verify user credentials
+            # Find Auth by email only
             try:
-                auth = Auth.objects.get(email=email, password=password)
-                user = User.objects.get(auth=auth)
-
+                auth = Auth.objects.get(email=email)
             except Auth.DoesNotExist:
                 return Response({
                     "success": False,
                     "error": "Invalid email or password"
                 }, status=status.HTTP_401_UNAUTHORIZED)
-            
+
+            # Check hashed password (THIS IS THE ONLY CHANGE)
+            if not check_password(password, auth.password):
+                return Response({
+                    "success": False,
+                    "error": "Invalid email or password"
+                }, status=status.HTTP_401_UNAUTHORIZED)
+
+            # Now get the related User
+            try:
+                user = User.objects.get(auth=auth)
             except User.DoesNotExist:
                 return Response({
                     "success": False,
                     "error": "User profile not found"
                 }, status=status.HTTP_404_NOT_FOUND)
-            
+
             # Store user info before deletion
             deleted_user_info = {
                 "user_id": user.id,
@@ -70,7 +79,7 @@ def delete_user(request):
                 "email": auth.email,
                 "deleted_at": "Current timestamp"
             }
-            
+            Chats.objects.filter(user_id=user.id).delete()  # This deletes all chats for this user safely
             # Delete both User and Auth records
             user.delete()
             auth.delete()

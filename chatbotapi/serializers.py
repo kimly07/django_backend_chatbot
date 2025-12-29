@@ -37,7 +37,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 class SignupSendOTPSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=100)
     email = serializers.EmailField()
-    password = serializers.CharField(min_length=8, write_only=True)
+    password = serializers.CharField(min_length=8)
 
     def validate_email(self, value):
         if Auth.objects.filter(email=value, is_verified=True).exists():
@@ -46,7 +46,7 @@ class SignupSendOTPSerializer(serializers.Serializer):
 
 class VerifyOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    otp_code = serializers.CharField(max_length=6, min_length=6)
+    otp_code = serializers.CharField(max_length=6, min_length=6)  
 
     def validate(self, data):
         email = data.get('email')
@@ -129,13 +129,23 @@ class VerifyResetOTPSerializer(serializers.Serializer):
     otp = serializers.CharField(max_length=6)
 
 class ResetPasswordSerializer(serializers.Serializer):
-    email = serializers.CharField()
-    new_password = serializers.CharField(min_length=8, write_only=True)
+    new_password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        if data['new_password'] != data['confirm_password']:
-            raise serializers.ValidationError("Passwords do not match")
+        new_password = data.get('new_password')
+        confirm_password = data.get('confirm_password')
+
+        if len(new_password) < 8:
+            raise serializers.ValidationError(
+                "Password must be at least 8 characters long"
+            )
+
+        if new_password != confirm_password:
+            raise serializers.ValidationError(
+                "Passwords do not match"
+            )
+
         return data
 
 
