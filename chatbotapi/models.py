@@ -9,13 +9,21 @@ class Auth(models.Model):
     otp_code = models.CharField(max_length=6, blank=True)
     otp_created_at = models.DateTimeField(null=True, blank=True)
 
+
+    is_verified = models.BooleanField(default=False)
+
+    otp_code = models.CharField(max_length=6, blank=True)
+    otp_created_at = models.DateTimeField(null=True, blank=True)
+
     temp_username = models.CharField(max_length=100, blank=True, null=True)
 
     reset_token = models.CharField(max_length=100, blank=True, null=True)
     reset_token_expires = models.DateTimeField(null=True, blank=True)
 
+
     reset_otp = models.CharField(max_length=6, blank=True, null=True)
     reset_otp_created_at = models.DateTimeField(null=True, blank=True)
+
 
     key = models.CharField(max_length=200, blank=True, null=True)
 
@@ -23,7 +31,9 @@ class Auth(models.Model):
         return self.email
 
 
+
 class User(models.Model):
+    
     auth = models.OneToOneField(
         Auth,
         on_delete=models.CASCADE,
@@ -41,7 +51,7 @@ class Chats(models.Model):
         on_delete=models.CASCADE,
         related_name="chats",
         db_column="auth_id",
-        null=True
+        null=True,
     )
 
     name = models.CharField(max_length=128)
@@ -52,7 +62,6 @@ class Chats(models.Model):
 
     def __str__(self):
         return self.name
-
 
 class RoleList(models.TextChoices):
     SYSTEM = "system"

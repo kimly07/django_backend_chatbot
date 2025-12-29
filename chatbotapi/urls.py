@@ -29,12 +29,15 @@ urlpatterns = [
 
     # -------- AUTH --------
     path('login/', views.login, name='login'),
-    path('refresh-token/', views.refresh_token, name='refresh_token'),
     path('delete-user/', delete_user, name='delete_user'),
+    path('refresh-token/', views.refresh_token, name='refresh_token'),
 
     # -------- PASSWORD RESET (OTP) --------
-    path('password/forgot/', views.forgot_password, name='forgot_password'),
+    path('reset-password/forgot/', views.forgot_password, name='forgot_password_resend/otp'),
     path('password/verify-otp/', views.verify_reset_otp, name='verify_reset_otp'),
+    path('password/reset/confirm/<str:token>/', views.reset_password_confirm, name='reset_password_confirm'),
+    # path('password/reset/<str:token>/', views.reset_password, name='reset_password'),
+
     path('password/reset/', views.reset_password, name='reset_password'),
 
     # ask gpt

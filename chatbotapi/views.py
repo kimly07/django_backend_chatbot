@@ -3,9 +3,9 @@
 from datetime import timedelta
 import random
 import requests
+import string
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
 from django.utils import timezone
 from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -24,77 +24,76 @@ from rest_framework.decorators import api_view, permission_classes
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def signup_send_otp(request):
-    """Send OTP to email for signup verification"""
-
     if request.method == 'GET':
         return Response({
-            'Lbeab sign up': {
-                'username': 'Kimly Smos',
-                'email': 'kimlyra55@gmail.com',
-                'password': 'your password'
+            "signup": {
+                "username": "Kimly Smos",
+                "email": "user@gmail.com",
+                "password": "your_password"
             },
-            'endpoint': {
-                'next_step': 'api/signup/verify-otp/'
-            }
+            "next_step": "/api/signup/verify-otp/"
         })
 
-    if request.method == 'POST':
-        serializer = SignupSendOTPSerializer(data=request.data)
-        
-        if not serializer.is_valid():
+    serializer = SignupSendOTPSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({
+            "success": False,
+            "errors": serializer.errors
+        }, status=400)
+
+    username = serializer.validated_data['username']
+    email = serializer.validated_data['email'].lower()
+    password = serializer.validated_data['password']
+
+    try:
+        auth = Auth.objects.filter(email=email).first()
+
+        # Email already verified
+        if auth and auth.is_verified:
             return Response({
                 "success": False,
-                "error": serializer.errors
+                "error": "Email already registered. Please login."
             }, status=400)
-        
-        username = serializer.validated_data['username']
-        email = serializer.validated_data['email']
-        password = serializer.validated_data['password']
 
-        try:
-            # Create or update Auth (save username temporarily)
-            auth, created = Auth.objects.get_or_create(
+        # Create or reuse unverified user
+        if not auth: 
+            auth = Auth.objects.create(
                 email=email,
-                defaults={
-                    'password': make_password(password), 
-                    'is_verified': False
-                }
+                password=make_password(password),
+                is_verified=False
             )
+        else:
+            auth.password = make_password(password)
 
-            if not created:
-                auth.password = make_password(password)
-                auth.temp_username = username   
-                auth.save()
+        # Generate OTP
+        otp_code = ''.join(random.choices(string.digits, k=6))
+        auth.otp_code = otp_code
+        auth.otp_created_at = timezone.now()
+        auth.temp_username = username
+        auth.save()
 
-            # Generate OTP
-            import random
-            import string
-            otp_code = ''.join(random.choices(string.digits, k=6))
-            auth.otp_code = otp_code
-            auth.otp_created_at = timezone.now()
-            auth.temp_username = username   
-            auth.save()
+        send_otp_email(
+            username=username,
+            email=email,
+            otp_code=otp_code
+        )
 
-            # Send email
-            send_otp_email(username=username, email=email, otp_code=otp_code)
-            return Response({
-                "success": True,
-                "message": "OTP sent to your email. Please check your inbox.",
-                "email": email,
-                "next_step": "Call /api/signup/verify-otp/ with email + OTP"
-            })
+        return Response({
+            "success": True,
+            "message": "OTP sent to your email",
+            "email": email,
+            "next_step": "/api/signup/verify-otp/"
+        })
 
-        except Exception as e:
-            return Response({
-                "success": False,
-                "error": f"Error sending OTP: {str(e)}"
-            }, status=500)
-
+    except Exception as e:
+        return Response({
+            "success": False,
+            "error": "Failed to send OTP"
+        }, status=500)
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def signup_verify_otp(request):
-
     """Verify OTP and complete registration"""
 
     if request.method == 'GET':
@@ -111,7 +110,7 @@ def signup_verify_otp(request):
         if not serializer.is_valid():
             return Response({
                 "success": False,
-                "error": serializer.errors
+                "errors": serializer.errors  
             }, status=400)
 
         email = serializer.validated_data['email']
@@ -121,22 +120,26 @@ def signup_verify_otp(request):
 
             # Final checks (redundant but safe)
             if auth.otp_code != request.data['otp_code']:
-                return Response({'success': False, 'error': 'Invalid OTP code'})
+                return Response({
+                    'success': False, 
+                    'error': 'Invalid OTP code'
+                }, status=400)  
+                
             if is_otp_expired(auth.otp_created_at):
-                return Response({'success': False, 'error': 'OTP expired'})
+                return Response({
+                    'success': False, 
+                    'error': 'OTP expired'
+                }, status=400)  
 
-            # Success! Complete registration
             auth.is_verified = True
             auth.otp_code = ""
             auth.save()
 
-            # Create User with saved username
             user = User.objects.create(
                 auth=auth,
                 username=auth.temp_username or "User"
             )
 
-            # Generate JWT tokens
             refresh = RefreshToken.for_user(auth)
             return Response({
                 "success": True,
@@ -146,13 +149,21 @@ def signup_verify_otp(request):
                 "email": email,
                 "access_token": str(refresh.access_token),
                 "refresh_token": str(refresh)
-            })
-
+            }, status=201)  
+        
         except Auth.DoesNotExist:
-            return Response({'success': False, 'error': 'Email not found'})
+            return Response({
+                'success': False, 
+                'error': 'Email not found'
+            }, status=404) 
+            
         except Exception as e:
-            return Response({'success': False, 'error': f'Error: {str(e)}'})
-
+            print(f"Error in signup_verify_otp: {str(e)}")  
+            return Response({
+                'success': False, 
+                'error': 'Server error occurred'
+            }, status=500)  
+        
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def login(request):
@@ -167,7 +178,7 @@ def login(request):
     if not serializer.is_valid():
         return Response({
             'success': False,
-            'error': serializer.errors
+            'error': 'Invalid email or Password'
         }, status=400)
     
     auth_user = serializer.validated_data['user']
@@ -244,7 +255,6 @@ def forgot_password(request):
             "error": f"Server error: {str(e)}"
         }, status=500)
     
-
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def verify_reset_otp(request):
@@ -272,22 +282,28 @@ def verify_reset_otp(request):
         if timezone.now() - auth.reset_otp_created_at > timedelta(minutes=15):
             return Response({"success": False, "error": "OTP expired"}, status=400)
 
+        reset_token = str(uuid.uuid4())
+        auth.reset_token = reset_token
+        auth.reset_token_expires = timezone.now() + timedelta(minutes=30)
         auth.reset_otp = None
         auth.reset_otp_created_at = None
         auth.save()
 
         return Response({
             "success": True,
-            "message": "OTP verified successfully"
+            "message": "OTP verified successfully",
+            "reset_token": reset_token
         })
 
     except Auth.DoesNotExist:
         return Response({"success": False, "error": "Email not found"}, status=404)
-    
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def reset_password_confirm(request, token):
+    """
+    Reset password using a valid reset token
+    """
 
     try:
         auth = Auth.objects.get(
@@ -300,67 +316,22 @@ def reset_password_confirm(request, token):
             "error": "Invalid or expired reset token"
         }, status=400)
 
-    
+    # GET → show example
     if request.method == 'GET':
         return Response({
             "success": True,
-            "message": "Valid reset token"
-        })
-
-    
-    serializer = ResetPasswordSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-
-    auth.password = make_password(
-        serializer.validated_data['new_password']
-    )
-
-    auth.reset_token = None
-    auth.reset_token_expires = None
-    auth.save()
-
-    return Response({
-        "success": True,
-        "message": "Password reset successful"
-    })
-
-@api_view(['GET', 'POST'])
-@permission_classes([AllowAny])
-def reset_password(request):
-    if request.method == 'GET':
-        return Response({
-            "message": "Reset password",
-            "example": {
-                "reset_token": "uuid-token-from-verify",
+            "message": "Valid reset token. You can now reset your password.",
+            "example_body": {
                 "new_password": "12345678",
                 "confirm_password": "12345678"
             }
         })
 
+    # POST → reset password
     serializer = ResetPasswordSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
-    reset_token = request.data.get('reset_token')
-
-    if not reset_token:
-        return Response({
-            "success": False,
-            "error": "Reset token required"
-        }, status=400)
-
-    try:
-        auth = Auth.objects.get(
-            reset_token=reset_token,
-            reset_token_expires__gt=timezone.now()
-        )
-    except Auth.DoesNotExist:
-        return Response({
-            "success": False,
-            "error": "Invalid or expired reset token"
-        }, status=400)
-
     auth.password = make_password(serializer.validated_data['new_password'])
-
     auth.reset_token = None
     auth.reset_token_expires = None
     auth.save()
@@ -370,10 +341,56 @@ def reset_password(request):
         "message": "Password reset successfully"
     })
 
-# views.py - Add refresh endpoint
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def reset_password(request):
+    if request.method == 'GET':
+        return Response({
+            "message": "Reset password",
+            "example": {
+                "email": "user@gmail.com",
+                "new_password": "12345678",
+                "confirm_password": "12345678"
+            }
+        })
+
+    serializer = ResetPasswordSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    email = request.data.get('email')
+
+    if not email:
+        return Response({
+            "success": False,
+            "error": "Email required"
+        }, status=400)
+
+    try:
+        auth = Auth.objects.get(email__iexact=email, is_verified=True)
+        
+        # Reset password
+        auth.password = make_password(serializer.validated_data['new_password'])
+        auth.save()
+
+        if Auth.password == auth.password:
+            return Response({
+                "success": False,
+                "error": "New password cannot be same as old password."
+            }, status=400)
+
+        return Response({
+            "success": True,
+            "message": "Password reset successfully"
+        })
+        
+    except Auth.DoesNotExist:
+        return Response({
+            "success": False,
+            "error": "Email not found"
+        }, status=400)
+    
 @api_view(['POST'])
 @permission_classes([AllowAny])
-
 def refresh_token(request):
     """Get new access token using refresh token"""
     refresh_token = request.data.get('refresh')

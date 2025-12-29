@@ -1,8 +1,6 @@
 # chatbotapi/utils/password_reset_email.py
 from django.core.mail import send_mail
 from django.urls import reverse
-from django.utils.http import urlsafe_base64_encode
-from django.utils.encoding import force_bytes
 from django.contrib.sites.models import Site
 
 def send_password_reset_email(user_auth, request):
