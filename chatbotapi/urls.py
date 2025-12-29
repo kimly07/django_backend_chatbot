@@ -36,4 +36,7 @@ urlpatterns = [
     path('password/forgot/', views.forgot_password, name='forgot_password'),
     path('password/verify-otp/', views.verify_reset_otp, name='verify_reset_otp'),
     path('password/reset/', views.reset_password, name='reset_password'),
+
+    # ask gpt
+    path('pota/gpt/chat', views.generate_prompt, name='generate_prompt')
 ]

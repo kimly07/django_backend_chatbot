@@ -19,6 +19,9 @@ DEBUG = config('DEBUG', cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 
+POTA_API_URI=config("POTA_API_URI")
+POTA_TOKEN_HEADER=config("POTA_TOKEN_HEADER")
+
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=1),
@@ -125,9 +128,9 @@ WSGI_APPLICATION = 'chatbot.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'chatbot',        # Database name you created
+        'NAME': 'pota_ai_db_flutter_demo',        # Database name you created
         'USER': 'postgres',          # Default username
-        'PASSWORD': '123', # Password you set during installation
+        'PASSWORD': 'Nice123', # Password you set during installation
         'HOST': 'localhost',
         'PORT': '5432',
     }

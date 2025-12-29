@@ -138,6 +138,9 @@ class ResetPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError("Passwords do not match")
         return data
 
-
-        
+class AskGPTReqSerializer(serializers.Serializer):
+    reset_token = serializers.CharField(max_length=128, min_length=1)
+    email = serializers.EmailField(max_length=128, min_length=1)
+    prompt = serializers.CharField(max_length=500, min_length=1)
+    chat_id = serializers.CharField(min_length=1, required=False)
     
