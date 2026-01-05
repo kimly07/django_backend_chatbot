@@ -189,7 +189,6 @@ class Auth(models.Model):
     def __str__(self):
         return self.email
 
-
 class User(models.Model):
     auth = models.OneToOneField(
         Auth,

@@ -74,12 +74,13 @@ def delete_user(request):
 
             # Store user info before deletion
             deleted_user_info = {
-                "user_id": user.id,
+                # "user_id": ,
                 "username": user.username,
                 "email": auth.email,
                 "deleted_at": "Current timestamp"
             }
-            Chats.objects.filter(user_id=user.id).delete()  # This deletes all chats for this user safely
+            # Chats.objects.filter(user_id=user.id).delete() 
+             # This deletes all chats for this user safely
             # Delete both User and Auth records
             user.delete()
             auth.delete()
