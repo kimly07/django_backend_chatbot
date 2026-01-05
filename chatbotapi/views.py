@@ -2,12 +2,15 @@
 
 from datetime import timedelta
 import random
+import requests
 import string
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.utils import timezone
 from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from chatbotapi.repository.pota_gpt import ask_gpt
 
 from .models import Auth, User
 from .send_opt_func import send_otp_email, is_otp_expired
@@ -411,4 +414,56 @@ def refresh_token(request):
         return Response({
             'success': False,
             'error': 'Invalid refresh token'
+        }, status=400)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def generate_prompt(request):
+
+    try:
+        req_info = AskGPTReqSerializer(data=request.data)
+
+        if(req_info.is_valid(raise_exception=True)):
+            
+            valid_data = req_info.validated_data
+
+            reset_token = valid_data.get("reset_token")
+            
+            Auth.objects.get(
+                reset_token=reset_token,
+                reset_token_expires__gt=timezone.now()
+            )
+            
+            gpt_resp = ask_gpt(
+                valid_data.get("email"),
+                reset_token=valid_data.get("reset_token"),
+                prompt=valid_data.get("prompt"),
+                chat_id=valid_data.get("chat_id")
+                ); 
+
+            return Response({
+                "success": True,
+                "message": gpt_resp
+            })
+
+    except Auth.DoesNotExist:
+        return Response({
+            "success": False,
+            "error": "Invalid request or expired reset token"
+        }, status=400)
+    
+    except requests.exceptions.RequestException as e:
+        status_code = 500
+        if e.response is not None:
+            status_code = e.response.status_code
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status_code)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
         }, status=400)

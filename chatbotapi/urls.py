@@ -38,4 +38,8 @@ urlpatterns = [
     path('password/reset/confirm/<str:token>/', views.reset_password_confirm, name='reset_password_confirm'),
     # path('password/reset/<str:token>/', views.reset_password, name='reset_password'),
 
+    path('password/reset/', views.reset_password, name='reset_password'),
+
+    # ask gpt
+    path('pota/gpt/chat', views.generate_prompt, name='generate_prompt')
 ]
