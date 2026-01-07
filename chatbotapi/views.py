@@ -184,7 +184,7 @@ def login(request):
     auth_user = serializer.validated_data['user']
 
     refresh = RefreshToken.for_user(auth_user)
-
+    
     return Response({
         "success": True,
         "message": "Login Success",
