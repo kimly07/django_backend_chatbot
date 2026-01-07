@@ -125,19 +125,28 @@ WSGI_APPLICATION = 'chatbot.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'pota_ai_db_flutter_demo',        # Database name you created
+#         'USER': 'postgres',          # Default username
+#         'PASSWORD': '123', # Password you set during installation
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#     }
+# }
+
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'pota_ai_db_flutter_demo',        # Database name you created
+        'NAME': 'chatbot',        # Database name you created
         'USER': 'postgres',          # Default username
-        'PASSWORD': 'Nice123', # Password you set during installation
+        'PASSWORD': '123', # Password you set during installation
         'HOST': 'localhost',
         'PORT': '5432',
     }
 }
-
-
-
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
