@@ -14,8 +14,15 @@ def ask_gpt(user_email: str, reset_token: str, prompt: str, chat_id: str) -> str
         "prompt": prompt,
     }
 
+
+
     if chat_id is not None:
         data["chat_id"] = chat_id
+
+    print("TARGET CHAT ID: ")
+    print(chat_id)
+    print(data["chat_id"])
+    print(data)
 
     gpt_resp = requests.post(
         url=settings.POTA_API_URI,
