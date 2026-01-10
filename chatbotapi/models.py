@@ -17,7 +17,10 @@ class Auth(models.Model):
     reset_otp = models.CharField(max_length=6, blank=True, null=True)
     reset_otp_created_at = models.DateTimeField(null=True, blank=True)
 
-
+    # change email fields
+    email_change_otp = models.CharField(max_length=6, null=True, blank=True)
+    new_email_pending = models.EmailField(null=True, blank=True)
+    otp_created_at = models.DateTimeField(null=True, blank=True)
     key = models.CharField(max_length=200, blank=True, null=True)
 
     def __str__(self):

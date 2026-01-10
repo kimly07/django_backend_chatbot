@@ -174,7 +174,10 @@ def signup_verify_otp(request):
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def login(request):
+    print("data passing in")
     serializer = LoginSerializer(data=request.data)
+
+    print("data validation complete")
     
     if request.method == 'GET':
         return Response({
@@ -188,18 +191,27 @@ def login(request):
             'error': 'Invalid email or Password'
         }, status=400)
     
+    print("Getting user data")
+    
     auth_user = serializer.validated_data['user']
 
     refresh = RefreshToken.for_user(auth_user)
+    
+    print("new refresh token")
 
     refresh_token = str(refresh)
     access_token = str(refresh.access_token)
 
-    auth = Auth.objects.get(email=auth_user.email)
+    print("getting user info from db ...")
 
+    auth = Auth.objects.get(email=auth_user.email)
 
     auth.reset_token = access_token
     auth.reset_token_expires = timezone.now() + timedelta(days=2)
+
+    print("saving data ...")
+
+    print(auth)
             
     auth.save()
 
@@ -209,14 +221,13 @@ def login(request):
         "user": {
             "id": auth_user.id,
             "email": auth_user.email,
-            "username": auth_user.temp_username or auth_user.email.split('@')[0]
+            "username": auth.temp_username or auth_user.email.split('@')[0]
         },
         "tokens": {
             "access": access_token,
             "refresh": refresh_token
         }
     })
-
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])

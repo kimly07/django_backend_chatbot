@@ -20,7 +20,11 @@
 
 from django.urls import path
 from . import views
-from .user_management import delete_user
+from .user_management import (
+    delete_user,
+    update_user
+    )
+
 
 urlpatterns = [
     # -------- SIGNUP --------
@@ -43,5 +47,8 @@ urlpatterns = [
     # ask gpt
     path('pota/gpt/chat', views.generate_prompt, name='generate_prompt'),
     path('pota/gpt/me/chat', views.get_chat, name='get_chat'),
-    path('pota/gpt/create/chat', views.create_chat, name='create_chat')
+    path('pota/gpt/create/chat', views.create_chat, name='create_chat'),
+
+    # user management
+    path('user/update-profile', update_user, name='update_user_profile'),
 ]
