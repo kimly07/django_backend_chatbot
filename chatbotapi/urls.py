@@ -41,5 +41,7 @@ urlpatterns = [
     path('password/reset/', views.reset_password, name='reset_password'),
 
     # ask gpt
-    path('pota/gpt/chat', views.generate_prompt, name='generate_prompt')
+    path('pota/gpt/chat', views.generate_prompt, name='generate_prompt'),
+    path('pota/gpt/me/chat', views.get_chat, name='get_chat'),
+    path('pota/gpt/create/chat', views.create_chat, name='create_chat')
 ]

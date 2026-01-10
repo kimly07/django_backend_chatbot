@@ -1,6 +1,6 @@
 # chatbotapi/views.py  ← Replace everything in your views.py with this
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 import random
 import requests
 import string
@@ -141,6 +141,13 @@ def signup_verify_otp(request):
             )
 
             refresh = RefreshToken.for_user(auth)
+
+            # insert new access-token into db
+
+            auth.reset_token = refresh.access_token
+            
+            auth.save()
+
             return Response({
                 "success": True,
                 "message": "Account created successfully!",
@@ -184,7 +191,18 @@ def login(request):
     auth_user = serializer.validated_data['user']
 
     refresh = RefreshToken.for_user(auth_user)
-    
+
+    refresh_token = str(refresh)
+    access_token = str(refresh.access_token)
+
+    auth = Auth.objects.get(email=auth_user.email)
+
+
+    auth.reset_token = access_token
+    auth.reset_token_expires = timezone.now() + timedelta(days=2)
+            
+    auth.save()
+
     return Response({
         "success": True,
         "message": "Login Success",
@@ -194,8 +212,8 @@ def login(request):
             "username": auth_user.temp_username or auth_user.email.split('@')[0]
         },
         "tokens": {
-            "access": str(refresh.access_token),
-            "refresh": str(refresh)
+            "access": access_token,
+            "refresh": refresh_token
         }
     })
 
@@ -448,13 +466,15 @@ def generate_prompt(request):
             })
 
     except Auth.DoesNotExist:
+        print(e)
         return Response({
             "success": False,
             "error": "Invalid request or expired reset token"
-        }, status=400)
+        }, status=401)
     
     except requests.exceptions.RequestException as e:
         status_code = 500
+        print(e)
         if e.response is not None:
             status_code = e.response.status_code
         return Response({
@@ -462,6 +482,117 @@ def generate_prompt(request):
             'error': str(e)
         }, status=status_code)
         
+    except Exception as e:
+        print(e)
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def get_chat(request):
+
+    try:
+        req_data = GetChatSerializer(data=request.data)
+
+        if not req_data.is_valid():
+            return Response({
+                "success": False,
+                "message": "Invalid request body, please include your email to verify."
+            })
+        
+        valid_data = req_data.validated_data
+
+        reset_token = valid_data.get("reset_token")
+
+        print(reset_token)
+        print(valid_data.get("email"))
+
+        target_auth = Auth.objects.get(
+            email=valid_data.get("email"),
+            reset_token=reset_token,
+            reset_token_expires__gt=timezone.now()
+        )
+
+        print("TARGET AUTH: ")
+        print(target_auth)
+
+        chat_resp_data = []
+        for chat in target_auth.chats.all():
+            chat_resp_data.append({
+                'id': chat.id,
+                'name': chat.name,
+                'isPremium': chat.is_premium,
+                'conversations': [
+                    {
+                        'id': convo.id,
+                        'role': convo.role,
+                        'message': convo.message
+                    } for convo in chat.conversations.all()
+                ]
+                })
+            
+        return Response({
+            "success": True,
+            "data": chat_resp_data
+        })
+
+        
+    except Auth.DoesNotExist as e:
+        print(e)
+        return Response({
+            "success": False,
+            "error": "Invalid request or expired reset token"
+        }, status=401)
+
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def create_chat(request):
+
+    try:
+        req_data = NewChatSerializer(data=request.data)
+
+        if not req_data.is_valid():
+            return Response({
+                "success": False,
+                "message": "Invalid request body, please include your chat-name to verify."
+            })
+        
+        valid_data = req_data.validated_data
+
+        reset_token = valid_data.get("reset_token")
+
+        target_auth = Auth.objects.get(
+            email=valid_data.get("email"),
+            reset_token=reset_token,
+            reset_token_expires__gt=timezone.now()
+        )
+
+        # new class 
+        new_chat = Chats.objects.create(
+            auth=target_auth,
+            name=valid_data.get("chat_name")
+        )
+
+        return Response({
+            "success": True,
+            "chat_id": new_chat.id
+        })
+
+    except Auth.DoesNotExist:
+        return Response({
+            "success": False,
+            "error": "Invalid request or expired reset token"
+        }, status=401)
+    
     except Exception as e:
         return Response({
             'success': False,

@@ -1,0 +1,1 @@
+C:\Users\MSI\Desktop\django-flutter-bot-api\django_backend_chatbot\virtualEnv\Scripts\Activate.ps1

@@ -149,8 +149,17 @@ class ResetPasswordSerializer(serializers.Serializer):
         return data
 
 class AskGPTReqSerializer(serializers.Serializer):
-    reset_token = serializers.CharField(max_length=128, min_length=1)
+    reset_token = serializers.CharField(max_length=512, min_length=1)
     email = serializers.EmailField(max_length=128, min_length=1)
     prompt = serializers.CharField(max_length=500, min_length=1)
     chat_id = serializers.CharField(min_length=1, required=False)
+
+
+class GetChatSerializer(serializers.Serializer):
+    reset_token = serializers.CharField(max_length=512, min_length=1)
+    email = serializers.EmailField(max_length=128, min_length=1)
     
+class NewChatSerializer(serializers.Serializer):
+    reset_token = serializers.CharField(max_length=512, min_length=1)
+    email = serializers.EmailField(max_length=128, min_length=1)
+    chat_name = serializers.CharField(max_length=128, min_length=1)
