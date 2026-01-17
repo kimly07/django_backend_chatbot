@@ -1,6 +1,7 @@
 # chatbotapi/views.py  ← Replace everything in your views.py with this
 
 from datetime import datetime, timedelta
+from datetime import datetime, timedelta
 import random
 import requests
 import string
@@ -147,6 +148,13 @@ def signup_verify_otp(request):
             
             auth.save()
 
+
+            # insert new access-token into db
+
+            auth.reset_token = refresh.access_token
+            
+            auth.save()
+
             return Response({
                 "success": True,
                 "message": "Account created successfully!",
@@ -223,6 +231,8 @@ def login(request):
             "username": auth.temp_username or auth_user.email.split('@')[0]
         },
         "tokens": {
+            "access": access_token,
+            "refresh": refresh_token,
             "access": access_token,
             "refresh": refresh_token
         }
@@ -478,13 +488,16 @@ def generate_prompt(request):
 
     except Auth.DoesNotExist:
         print(e)
+        print(e)
         return Response({
             "success": False,
             "error": "Invalid request or expired reset token"
         }, status=401)
+        
     
     except requests.exceptions.RequestException as e:
         status_code = 500
+        print(e)
         print(e)
         if e.response is not None:
             status_code = e.response.status_code
