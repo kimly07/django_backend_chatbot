@@ -16,7 +16,6 @@ from .models import Auth, User
 from .send_opt_func import send_otp_email, is_otp_expired
 from .serializers import *   
 import uuid
-from .pasword_reset_email import send_password_reset_email
 
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
@@ -227,7 +226,8 @@ def login(request):
             "access": access_token,
             "refresh": refresh_token
         }
-    })
+})
+
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
@@ -605,6 +605,93 @@ def create_chat(request):
         }, status=401)
     
     except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+    
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def deleteChat(request):
+    
+    if request.method == 'GET':
+        return Response({
+            "message": "Delete Chat",
+            "endpoint": "/api/delete-chat/",
+            "method": "POST",
+            "description": "Delete a specific chat and all its conversations by chat_id",
+            "request_body": {
+                "email": "user@example.com",
+                "reset_token": "your_reset_token_here",
+                "chat_id": 1
+            },
+            "response_success": {
+                "success": True,
+                "message": "Chat deleted successfully",
+                "deleted_conversations": 5
+            },
+            "response_error": {
+                "success": False,
+                "error": "Error message"
+            }
+        })
+    
+    # POST method - actual deletion
+    try:
+        # Validate request data
+        email = request.data.get('email')
+        reset_token = request.data.get('reset_token')
+        chat_id = request.data.get('chat_id')
+        
+        if not all([email, reset_token, chat_id]):
+            return Response({
+                'success': False,
+                'error': 'Email, reset_token, and chat_id are required'
+            }, status=400)
+        
+        # Verify user authentication
+        target_auth = Auth.objects.get(
+            email=email,
+            reset_token=reset_token,
+            reset_token_expires__gt=timezone.now()
+        )
+
+        print("BEFORE GET CHAT ...")
+        
+        # Get the chat belonging to this user
+        chat = Chats.objects.get(
+            id=chat_id,
+            auth=target_auth
+        )
+
+        print(chat)
+        
+        # Get conversation count before deletion (optional, for response)
+        conversation_count = chat.conversations.count()
+        
+        # Delete the chat (will cascade delete all conversations)
+        chat.delete()
+        
+        return Response({
+            'success': True,
+            'message': 'Chat deleted successfully',
+            'deleted_conversations': conversation_count
+        })
+        
+    except Auth.DoesNotExist:
+        return Response({
+            'success': False,
+            'error': 'Invalid request or expired reset token'
+        }, status=401)
+        
+    except Chats.DoesNotExist:
+        return Response({
+            'success': False,
+            'error': 'Chat not found or does not belong to this user'
+        }, status=404)
+        
+    except Exception as e:
+        print(e)
         return Response({
             'success': False,
             'error': str(e)

@@ -1,13 +1,24 @@
+from datetime import datetime, timedelta
+import random
+import requests
+from django.utils import timezone
+import string
+from django.conf import settings
 from django.db import connection
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+
 from django.core.exceptions import ObjectDoesNotExist
+
+
+from .change_email_sendotp import change_email_send_otp 
 from .models import Auth, Chats, User
 
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
-from django.contrib.auth.hashers import check_password   # <-- ONLY NEW LINE
+from django.contrib.auth.hashers import check_password  
 
 
 from django.contrib.auth.hashers import make_password
@@ -70,246 +81,173 @@ def delete_user(request):
             "success": False,
             "error": "User not found"
         }, status=status.HTTP_404_NOT_FOUND)    
-    
-# @api_view(['GET', 'POST'])
-# @permission_classes([AllowAny])
-# def update_user(request):
-#     """Update user profile - Compatible with Flutter"""
-
-#     if request.method == 'GET':
-#         return Response({
-#             "message": "Update User Profile API is working!",
-#             "instruction": "Send POST request with user credentials and updated profile data",
-#             "required_fields": ["email", "password"],
-#             "optional_fields": ["new_username", "new_email", "new_password"],
-#             "example_request": {
-#                 "email": "kimlyra15@gmail.com",
-#                 "password": "12345678",
-#                 "new_username": "lylyly01",
-#                 "new_email": "new_email@example.com",
-#                 "new_password": "new_password"
-#             }
-#         })
-
-#     # POST
-#     email = request.data.get('email')
-#     password = request.data.get('password')
-
-#     if not email or not password:
-#         return Response({
-#             "success": False,
-#             "error": "Email and password are required"
-#         }, status=status.HTTP_400_BAD_REQUEST)
-
-#     try:
-#         auth = Auth.objects.get(email__iexact=email)
-#         user = User.objects.get(username=auth.user.username, username=auth.temp_username)
-
-#     except ObjectDoesNotExist:
-#         return Response({
-#             "success": False,
-#             "error": "Invalid email or password"
-#         }, status=status.HTTP_401_UNAUTHORIZED)
-#     #         "success": False,
-#     #         "error": "Invalid email or password"
-#     #     }, status=status.HTTP_401_UNAUTHORIZED)
-
-#     # if not check_password(password, auth.password):
-#     #     return Response({
-#     #         "success": False,
-#     #         "error": "Invalid password"
-#     #     }, status=status.HTTP_401_UNAUTHORIZED)
-
-#     # Update fields
-#     new_username = request.data.get('new_username')
-#     new_email = request.data.get('new_email')
-#     new_password = request.data.get('new_password')
-
-#     if new_username:
-#         user.username = new_username
-
-#     if new_email:
-#         auth.email = new_email.lower()
-
-#     if new_password:
-#         auth.password = make_password(new_password)
-
-#     user.save()
-#     auth.save()
-
-#     return Response({
-#         "success": True,
-#         "message": "Profile updated successfully",
-#         "updated_profile": {
-#             "username": user.username,
-#             "email": auth.email
-#         }
-#     }) 
-
-from django.core.exceptions import ObjectDoesNotExist
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
-def update_user(request):
-    """Update user profile - Compatible with Flutter"""
-
-    if request.method == 'GET':
+def request_email_change_otp(request):
+    if request.method == "GET":
         return Response({
-            "message": "Update User Profile API is working!",
-            "instruction": "Send POST request with user credentials and updated profile data",
-            "required_fields": ["email", "password"],
-            "optional_fields": ["new_username", "new_email", "new_password"],
-            "example_request": {
-                "email": "kimlyra15@gmail.com",
-                "password": "12345678",
-                "new_username": "lylyly01",
-                "new_email": "new_email@example.com",
-                "new_password": "new_password"
+            "message": "Request Email Change OTP API",
+            "method": "POST",
+            "required_fields": ["email", "new_email"],
+            "example": {
+                "email": "kimlyra55@gmail.com",
+                "new_email": "kimlyra15@gmail.com"
             }
         })
 
-    # POST - Extract credentials
-    email = request.data.get('email')
-    password = request.data.get('password')
+    current_email = request.data.get('email')
+    new_email     = request.data.get('new_email')
 
-    if not email or not password:
+    if not current_email or not new_email:
         return Response({
             "success": False,
-            "error": "Email and password are required"
-        }, status=status.HTTP_400_BAD_REQUEST)
+            "error": "Both 'email' (current) and 'new_email' are required"
+        }, status=400)
 
-    # Authenticate user
+    current_email = current_email.lower().strip()
+    new_email     = new_email.lower().strip()
+
     try:
-        auth = Auth.objects.get(email__iexact=email)
-        print(f"✓ Found Auth - email: {auth.email}, temp_username: {auth.temp_username}")
-        
-        # Try to find user - if not exists, we'll handle it
-        try:
-            user = User.objects.get(username=auth.temp_username)
-            print(f"✓ Found User - username: {user.username}")
-        except User.DoesNotExist:
-            print(f"✗ User doesn't exist with username: {auth.temp_username}")
-            # Check if there's a ForeignKey relationship
-            if hasattr(auth, 'user') and auth.user:
-                user = auth.user
-                print(f"✓ Found User via ForeignKey - username: {user.username}")
-            else:
-                return Response({
-                    "success": False,
-                    "error": "User profile incomplete. Please contact support."
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
+        auth = Auth.objects.get(email__iexact=current_email)
     except Auth.DoesNotExist:
-        print(f"✗ Auth not found for email: {email}")
         return Response({
             "success": False,
-            "error": "Invalid email or password"
-        }, status=status.HTTP_401_UNAUTHORIZED)
+            "error": "No account found with this email"
+        }, status=404)
 
-    # Verify password
-    if not check_password(password, auth.password):
-        print(f"✗ Password check failed")
+    if Auth.objects.filter(email__iexact=new_email).exclude(id=auth.id).exists():
         return Response({
             "success": False,
-            "error": "Invalid email or password"
-        }, status=status.HTTP_401_UNAUTHORIZED)
-    
-    print(f"✓ Password verified")
+            "error": "This new email is already in use by another account"
+        }, status=400)
 
-    # Update fields with validation
-    new_username = request.data.get('new_username')
-    new_email = request.data.get('new_email')
-    new_password = request.data.get('new_password')
+    if current_email == new_email:
+        return Response({
+            "success": False,
+            "error": "New email is the same as current email"
+        }, status=400)
 
-    # Validate and update username
-    if new_username:
-        if User.objects.filter(username=new_username).exclude(id=user.id).exists():
-            return Response({
-                "success": False,
-                "error": "Username already taken"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if Auth.objects.filter(temp_username=new_username).exclude(id=auth.id).exists():
-            return Response({
-                "success": False,
-                "error": "Username already taken"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        user.username = new_username
-        auth.temp_username = new_username
+    otp = ''.join(random.choices(string.digits, k=6))
 
-    # Validate and update email
-    if new_email:
-        new_email_lower = new_email.lower()
-        if Auth.objects.filter(email__iexact=new_email_lower).exclude(id=auth.id).exists():
-            return Response({
-                "success": False,
-                "error": "Email already in use"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        auth.email = new_email_lower
-
-    # Update password
-    if new_password:
-        if len(new_password) < 8:
-            return Response({
-                "success": False,
-                "error": "Password must be at least 8 characters"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        auth.password = make_password(new_password)
-
-    # Save changes
-    user.save()
+    auth.email_change_otp    = otp
+    auth.new_email           = new_email
+    auth.new_otp_created_at  = timezone.now()
     auth.save()
+
+    change_email_send_otp(
+        username=auth.temp_username or "User",
+        email=new_email,
+        email_change_otp=otp
+    )
 
     return Response({
         "success": True,
-        "message": "Profile updated successfully",
-        "updated_profile": {
-            "username": user.username,
-            "email": auth.email
-        }
+        "message": "OTP sent to the new email address",
+        "sent_to": new_email[:3] + "***" + new_email[new_email.find('@'):]
     })
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
-def send_otp_for_email_change(request):
-    """Send OTP for email change - Placeholder function"""
+def verify_email_change_otp(request):
+    """Verify OTP and update email"""
     if request.method == 'GET':
         return Response({
-            "message": "Send OTP for Email Change API is working!",
-            "example_request": {
-                "email": "kimlyra55@gmail.com"
+            "message": "Verify Email Change OTP API",
+            "method": "POST",
+            "required_fields": ["email", "email_change_otp"],
+            "example": {
+                "email": "kimlyra55@gmail.com",
+                "email_change_otp": "123456"
             }
         })
-    if request.method == 'POST':
-        email = request.data.get('email')
-        if not email:
-            return Response({
-                "success": False,
-                "error": "Email is required"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-    try: 
-        auth = Auth.objects.get(email__iexact=email)
-        if not auth.is_verified:
-            return Response({
-                "success": False,
-                "error": "Email is not verified"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if auth.new_email_pending:
-            return Response({
-                "success": False,
-                "error": "You have a pending email change request. Please verify the OTP sent to your new email."
-            }, status=status.HTTP_400_BAD_REQUEST)
-        # if auth.otp_created_at != otp
+
+    email = request.data.get('email')
+    otp   = request.data.get('email_change_otp')
+
+    if not email or not otp:
+        return Response({"success": False, "error": "Email and OTP are required"}, status=400)
+
+    try:
+        user_auth = Auth.objects.get(email__iexact=email.strip().lower())
     except Auth.DoesNotExist:
+        return Response({"success": False, "error": "User not found"}, status=404)
+
+
+    if not user_auth.email_change_otp or not user_auth.new_email:
         return Response({
-            "success": False,
-            "error": "User with this email does not exist"
-        }, status=status.HTTP_404_NOT_FOUND)
-        # Placeholder - actual OTP sending logic not implemented
+            "success": False, 
+            "error": "No pending request. Please request OTP again."
+        }, status=400)
+
+    if str(otp).strip() != str(user_auth.email_change_otp):
+        return Response({"success": False, "error": "Invalid OTP"}, status=400)
+
+    user_auth.email = user_auth.new_email 
+    user_auth.email_change_otp = None 
+    user_auth.new_email = None 
+    user_auth.new_otp_created_at = None 
+    user_auth.save()
+
     return Response({
-        "success": True,
-        "message": "OTP sent to new email (functionality not implemented)"
+        "success": True, 
+        "message": "Email updated successfully",
+        "new_email": user_auth.email
+    })
+
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def update_user(request):
+    if request.method == 'GET':
+        return Response({
+            "message": "Update Profile API",
+            "required_fields": ["email"], 
+            "optional_fields": ["new_username", "new_password"],
+            "example_request": {
+                "email": "user@example.com",
+                "new_username": "vanda_pro",
+                "new_password": "newpassword123"
+            }
+        })
+
+    email_id = request.data.get('email') 
+    new_username = request.data.get('new_username')
+    new_password = request.data.get('new_password')
+
+    if not email_id:
+        return Response({"success": False, "error": "Email is required"}, status=400)
+
+    try:
+        auth_obj = Auth.objects.get(email=email_id)
+    except Auth.DoesNotExist:
+        return Response({"success": False, "error": "User not found"}, status=404)
+
+    if new_username:
+        if Auth.objects.filter(temp_username=new_username).exclude(id=auth_obj.id).exists():
+            return Response({"success": False, "error": "Username already taken"}, status=400)
+        auth_obj.temp_username = new_username
+
+    if new_password:
+        if len(new_password) < 7:
+            return Response({"success": False, "error": "Password too short"}, status=400)
+        auth_obj.password = make_password(new_password)
+
+    auth_obj.save()
+
+    try:
+        user_obj = auth_obj.user 
+        if new_username:
+            user_obj.username = new_username
+            user_obj.save()
+    except User.DoesNotExist:
+        if new_username:
+            User.objects.create(auth=auth_obj, username=new_username)
+
+    return Response({
+        "success": True, 
+        "message": "Profile updated successfully",
+        "data": {
+            "username": auth_obj.temp_username, 
+            "email": auth_obj.email
+        }        
     })

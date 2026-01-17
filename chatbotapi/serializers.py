@@ -163,3 +163,37 @@ class NewChatSerializer(serializers.Serializer):
     reset_token = serializers.CharField(max_length=512, min_length=1)
     email = serializers.EmailField(max_length=128, min_length=1)
     chat_name = serializers.CharField(max_length=128, min_length=1)
+
+
+# class changeEmailSendOTPSerializer(serializers.Serializer):
+#     new_email = serializers.EmailField()
+
+#     def validate_new_email(self, value):
+#         if Auth.objects.filter(email__iexact=value, is_verified=True).exists():
+#             raise serializers.ValidationError("This email is already registered.")
+#         if Auth.objects.filter(new_email_pending__iexact=value).exists():
+#             raise serializers.ValidationError("This email is already pending for change.")
+#         return value.lower()
+    
+# class changeEmailVerifyOTPSerializer(serializers.Serializer):
+#     new_email_pending = serializers.EmailField()
+#     email_change_otp = serializers.CharField(max_length=6, min_length=6)
+    
+#     def validate(self, data):
+#         new_email_pending = data.get('new_email_pending')
+#         email_change_otp = data.get('email_change_otp')
+
+#         try:
+#             auth = Auth.objects.get(new_email_pending=new_email_pending)
+#             if auth.email_change_otp != email_change_otp:
+#                 raise serializers.ValidationError("Invalid OTP code")
+            
+#             if auth.otp_created_at and (timezone.now() - auth.otp_created_at).total_seconds() > 600:
+#                 raise serializers.ValidationError("OTP has expired")
+                
+#         except Auth.DoesNotExist:
+#             raise serializers.ValidationError("Email not found")
+
+#         return data
+
+    

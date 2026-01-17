@@ -3,7 +3,7 @@ from django.conf import settings
 import datetime
 from django.utils import timezone
 
-def change_email_send_otp(username, email, otp_code):  
+def change_email_send_otp(username, email, email_change_otp):  
     """Send OTP code to user's email for changing email"""
     subject = "Your OTP Code for Changing Email - ChatBot App"
     message = f"""
@@ -13,7 +13,7 @@ def change_email_send_otp(username, email, otp_code):
 
     Your OTP verification code is: 
     
-    {otp_code}
+    {email_change_otp}
 
     This code will expire in 10 minutes.
 
