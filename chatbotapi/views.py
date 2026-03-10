@@ -1,6 +1,4 @@
-# chatbotapi/views.py  ← Replace everything in your views.py with this
 
-from datetime import datetime, timedelta
 from datetime import datetime, timedelta
 import random
 import requests
@@ -18,7 +16,7 @@ from .send_opt_func import send_otp_email, is_otp_expired
 from .serializers import *   
 import uuid
 
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 
 @api_view(['GET', 'POST'])
@@ -27,7 +25,7 @@ def signup_send_otp(request):
     if request.method == 'GET':
         return Response({
             "signup": {
-                "username": "Kimly Smos",
+                "username": "Ra Kimly",
                 "email": "user@gmail.com",
                 "password": "your_password"
             },
@@ -118,7 +116,7 @@ def signup_verify_otp(request):
         try:
             auth = Auth.objects.get(email=email)
 
-            # Final checks (redundant but safe)
+
             if auth.otp_code != request.data['otp_code']:
                 return Response({
                     'success': False, 
@@ -130,7 +128,8 @@ def signup_verify_otp(request):
                     'success': False, 
                     'error': 'OTP expired'
                 }, status=400)  
-
+            
+            
             auth.is_verified = True
             auth.otp_code = ""
             auth.save()
@@ -142,7 +141,7 @@ def signup_verify_otp(request):
 
             refresh = RefreshToken.for_user(auth)
 
-            # insert new access-token into db
+            # insert new token to database
 
             auth.reset_token = refresh.access_token
             
@@ -150,9 +149,7 @@ def signup_verify_otp(request):
 
 
             # insert new access-token into db
-
             auth.reset_token = refresh.access_token
-            
             auth.save()
 
             return Response({
@@ -188,8 +185,8 @@ def login(request):
     
     if request.method == 'GET':
         return Response({
-            "email": "sokha@gmail.com",
-            "password": "123456"
+            "email": "kimlyra55@gmail.com",
+            "password": "12345678"
             })
     
     if not serializer.is_valid():
@@ -238,13 +235,11 @@ def login(request):
         }
 })
 
-
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def forgot_password(request):
     """Send OTP for password reset"""
     
-    # GET - Show API info
     if request.method == 'GET':
         return Response({
             "message": "Send OTP to reset password",
@@ -253,7 +248,7 @@ def forgot_password(request):
             }
         })
     
-    # POST - Send OTP
+    # Post method
     try:
         serializer = ForgetPasswordSerializer(data=request.data)
         
@@ -280,7 +275,7 @@ def forgot_password(request):
         auth.reset_otp_created_at = timezone.now()
         auth.save()
         
-        # Send OTP email
+        # Send OTP to old email
         send_otp_email(username=auth.temp_username or "User", email=email, otp_code=otp)
         
         return Response({
@@ -301,8 +296,8 @@ def verify_reset_otp(request):
         return Response({
             "message": "Verify reset password OTP",
             "example": {
-                "email": "user@gmail.com",
-                "otp": "123456"
+                "email": "kimlyra55@gmail.com",
+                "otp": "12345678"
             }
         })
 
@@ -355,7 +350,6 @@ def reset_password_confirm(request, token):
             "error": "Invalid or expired reset token"
         }, status=400)
 
-    # GET → show example
     if request.method == 'GET':
         return Response({
             "success": True,
@@ -366,7 +360,6 @@ def reset_password_confirm(request, token):
             }
         })
 
-    # POST → reset password
     serializer = ResetPasswordSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
@@ -427,7 +420,41 @@ def reset_password(request):
             "success": False,
             "error": "Email not found"
         }, status=400)
-    
+
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def get_user_profile(request, token):
+    """
+    GET  - Show current profile
+    POST - Update profile
+    """
+    try:
+        from rest_framework_simplejwt.tokens import AccessToken
+        decoded = AccessToken(token)
+        user_id = decoded['user_id']
+        auth = Auth.objects.get(id=user_id)
+    except Auth.DoesNotExist:
+        return Response({
+            "success": False,
+            "error": "User not found"
+        }, status=404)
+    except Exception:
+        return Response({
+            "success": False,
+            "error": "Invalid or expired token"
+        }, status=400)
+
+    if request.method == 'GET':
+        return Response({
+            "success": True,
+            "profile": {
+                "id": auth.id,
+                "username": auth.temp_username,
+                "email": auth.email,
+                "is_verified": auth.is_verified,
+            },
+        })
+ 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def refresh_token(request):

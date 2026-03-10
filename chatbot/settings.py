@@ -22,6 +22,8 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 POTA_API_URI=config("POTA_API_URI")
 POTA_TOKEN_HEADER=config("POTA_TOKEN_HEADER")
 
+KIMLY_API_URI=config("KIMLY_API_URI")
+KIMLY_TOKEN_HEADER = config('KIMLY_TOKEN_HEADER')
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
@@ -71,7 +73,8 @@ SITE_ID = 1
 # Application definition
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',    ),
+        'rest_framework_simplejwt.authentication.JWTAuthentication',    
+        ),
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated', 
     ],

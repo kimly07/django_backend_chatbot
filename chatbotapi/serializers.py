@@ -106,7 +106,6 @@ class LoginSerializer(serializers.Serializer):
         try:
             auth_user = Auth.objects.get(email__iexact=email, is_verified=True)
             
-            # FIX: Use check_password instead of direct comparison
             if not check_password(password, auth_user.password):
                 raise serializers.ValidationError("Invalid email or password")
 

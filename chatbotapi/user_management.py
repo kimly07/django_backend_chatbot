@@ -1,6 +1,4 @@
-from datetime import datetime, timedelta
 import random
-import requests
 from django.utils import timezone
 import string
 from django.conf import settings
@@ -8,10 +6,6 @@ from django.db import connection
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-
-from django.core.exceptions import ObjectDoesNotExist
-
 
 from .change_email_sendotp import change_email_send_otp 
 from .models import Auth, Chats, User
@@ -59,7 +53,6 @@ def delete_user(request):
                 "error": "Invalid password"
             }, status=status.HTTP_401_UNAUTHORIZED)
 
-        # ✅ DELETE chats FIRST (correct column: user_id)
         with connection.cursor() as cursor:
             cursor.execute(
                 "DELETE FROM chatbotapi_user WHERE id = %s"
@@ -67,7 +60,6 @@ def delete_user(request):
                 , [user.id]
             )
 
-        # ✅ Delete user & auth
         user.delete()
         auth.delete()
 
@@ -204,7 +196,7 @@ def update_user(request):
             "required_fields": ["email"], 
             "optional_fields": ["new_username", "new_password"],
             "example_request": {
-                "email": "user@example.com",
+                "email": "kimlyra55@gmail.com",
                 "new_username": "vanda_pro",
                 "new_password": "newpassword123"
             }
@@ -222,26 +214,15 @@ def update_user(request):
     except Auth.DoesNotExist:
         return Response({"success": False, "error": "User not found"}, status=404)
 
-    if new_username:
-        if Auth.objects.filter(temp_username=new_username).exclude(id=auth_obj.id).exists():
-            return Response({"success": False, "error": "Username already taken"}, status=400)
-        auth_obj.temp_username = new_username
 
+    if new_username:
+        auth_obj.temp_username = new_username
     if new_password:
         if len(new_password) < 7:
             return Response({"success": False, "error": "Password too short"}, status=400)
         auth_obj.password = make_password(new_password)
 
     auth_obj.save()
-
-    try:
-        user_obj = auth_obj.user 
-        if new_username:
-            user_obj.username = new_username
-            user_obj.save()
-    except User.DoesNotExist:
-        if new_username:
-            User.objects.create(auth=auth_obj, username=new_username)
 
     return Response({
         "success": True, 

@@ -34,4 +34,8 @@ urlpatterns = [
     path('user/update-user/', update_user, name='update_user_profile'),
     path('user/request-email-change-otp/', request_email_change_otp, name='send_otp_change_email'),
     path('user/verify-otp-change-email/', verify_email_change_otp, name='verify_otp_change_email'),
+
+    # user profile
+    path('user/profile/<str:token>/', views.get_user_profile, name='profile'),
+
 ]
